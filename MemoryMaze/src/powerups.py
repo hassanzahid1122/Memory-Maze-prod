@@ -5,12 +5,16 @@ import random
 
 import pygame
 
-from . import config, effects
+from . import ai as ai_module
+from . import audio, config, effects
 
 SPEED = "SPEED"
 SLOW_AI = "SLOW_AI"
 FREEZE = "FREEZE"
-TYPES = (SPEED, SLOW_AI, FREEZE)
+REVEAL = "REVEAL"
+TELEPORT = "TELEPORT"
+# Common speed power-ups are weighted more heavily than the rarer utilities.
+SPAWN_POOL = [SPEED, SPEED, SLOW_AI, SLOW_AI, FREEZE, FREEZE, REVEAL, TELEPORT]
 
 
 class PowerUp:
@@ -46,7 +50,7 @@ class PowerUpManager:
         for _ in range(config.POWERUP_COUNT):
             r = random.randint(1, self.maze.rows - 2)
             c = random.randint(1, self.maze.cols - 2)
-            powerups.append(PowerUp(r, c, random.choice(TYPES)))
+            powerups.append(PowerUp(r, c, random.choice(SPAWN_POOL)))
         return powerups
 
     def update(self, player, ai):
@@ -61,8 +65,14 @@ class PowerUpManager:
                 ai.move_delay += config.SLOW_AI_AMOUNT
             elif p.type == FREEZE:
                 ai.freeze_time = config.FREEZE_DURATION
+            elif p.type == REVEAL:
+                self.maze.reveal_time = config.REVEAL_FRAMES
+            elif p.type == TELEPORT:
+                path = ai_module.shortest_path(self.maze, (player.row, player.col), self.maze.exit)
+                player.teleport_along(path, config.TELEPORT_JUMP)
 
             p.active = False
+            audio.play("pickup")
 
     def draw(self, screen, viewport, t=0.0):
         size = viewport.cell_size

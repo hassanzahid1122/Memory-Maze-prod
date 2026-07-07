@@ -1,44 +1,50 @@
-"""Persistent leaderboard storage.
+"""Persistent leaderboard: storage, scoring formula and ranking helpers."""
 
-The scores file is resolved to a fixed, absolute location so results land in the
-same place regardless of the current working directory (and next to the binary
-when the game is frozen into an executable).
-"""
+from . import config, storage
 
-import json
-import sys
-from pathlib import Path
+SCORES_FILE = "scores.json"
 
 
-def _scores_path():
-    if getattr(sys, "frozen", False):  # running from a PyInstaller bundle
-        base = Path(sys.executable).resolve().parent
-    else:
-        base = Path(__file__).resolve().parent.parent  # the MemoryMaze/ folder
-    return base / "scores.json"
-
-
-SCORES_FILE = _scores_path()
+def compute_score(difficulty_key, winner, time_taken, penalty):
+    """Points reward finishing fast; losing to the AI still earns a fraction."""
+    base = config.DIFFICULTIES[difficulty_key].score_base
+    points = base - time_taken * 8 - penalty * 20
+    if winner != "PLAYER":
+        points //= 3
+    return max(50, int(points))
 
 
 def load_scores():
-    """Return the list of recorded games, or an empty list if none/corrupt."""
-    if not SCORES_FILE.exists():
-        return []
-    try:
-        with open(SCORES_FILE, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except (json.JSONDecodeError, OSError):
-        return []
+    """Return the raw list of recorded games (oldest first)."""
+    data = storage.load_json(SCORES_FILE, [])
+    return data if isinstance(data, list) else []
 
 
-def save_score(player, winner, time_taken, penalty):
+def save_score(player, winner, time_taken, penalty, difficulty="MEDIUM"):
     scores = load_scores()
     scores.append({
         "player": player,
         "winner": winner,
         "time": time_taken,
         "penalty": penalty,
+        "difficulty": difficulty,
+        "score": compute_score(difficulty, winner, time_taken, penalty),
     })
-    with open(SCORES_FILE, "w", encoding="utf-8") as f:
-        json.dump(scores, f, indent=4)
+    storage.save_json(SCORES_FILE, scores)
+
+
+def _score_of(entry):
+    return entry.get("score", 0)
+
+
+def top_scores(limit=config.LEADERBOARD_LIMIT):
+    """Highest-scoring games first."""
+    return sorted(load_scores(), key=_score_of, reverse=True)[:limit]
+
+
+def best_score(difficulty_key=None):
+    """The single best score overall, or for one difficulty."""
+    scores = load_scores()
+    if difficulty_key:
+        scores = [s for s in scores if s.get("difficulty") == difficulty_key]
+    return max((_score_of(s) for s in scores), default=0)

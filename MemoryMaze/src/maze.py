@@ -54,6 +54,7 @@ class Maze:
         self.cycle_duration = cycle_duration
         self.last_switch_time = time.time()
         self.visible_cells = set()
+        self.reveal_time = 0        # frames the REVEAL power-up forces full visibility
 
         self._generate()
 
@@ -111,8 +112,16 @@ class Maze:
     # ------------------------------------------------------------------ #
     # Memory cycle
     # ------------------------------------------------------------------ #
+    @property
+    def revealed(self):
+        """True while a REVEAL power-up is forcing the whole maze visible."""
+        return self.reveal_time > 0
+
     def update_memory_cycle(self):
         """Flip between VISIBLE and HIDDEN once ``cycle_duration`` has elapsed."""
+        if self.reveal_time > 0:
+            self.reveal_time -= 1
+
         now = time.time()
         if now - self.last_switch_time < self.cycle_duration:
             return
@@ -159,7 +168,7 @@ class Maze:
                     self._draw_marker(screen, x, y, size, config.Color.EXIT, t, offset=0.9)
                     continue
 
-                if self.memory_state == HIDDEN and pos not in self.visible_cells:
+                if self.memory_state == HIDDEN and not self.revealed and pos not in self.visible_cells:
                     pygame.draw.rect(screen, config.Color.FOG, (x + 1, y + 1, size - 2, size - 2),
                                      border_radius=4)
                     continue

@@ -93,15 +93,21 @@ class AIPlayer:
         body = config.Color.FREEZE_TINT if frozen else config.Color.AI_BODY
         glow = config.Color.FREEZE_TINT if frozen else config.Color.AI_GLOW
 
-        self.trail.append(center)
-        for i, (tx, ty) in enumerate(self.trail):
-            f = (i + 1) / len(self.trail)
-            effects.draw_alpha_circle(screen, body, (tx, ty), size * 0.16 * f, int(60 * f))
+        if effects.enabled():
+            self.trail.append(center)
+            for i, (tx, ty) in enumerate(self.trail):
+                f = (i + 1) / len(self.trail)
+                effects.draw_alpha_circle(screen, body, (tx, ty), size * 0.16 * f, int(60 * f))
 
         glow_r = size * (0.5 + 0.12 * effects.pulse(t, speed=5))
         effects.draw_glow(screen, glow, center, glow_r)
         pygame.draw.circle(screen, body, center, int(size * 0.28))
         pygame.draw.circle(screen, config.Color.WHITE, center, int(size * 0.09))
+
+
+def shortest_path(maze, start, goal):
+    """Shortest path from ``start`` to ``goal`` (excluding start); [] if none."""
+    return AIPlayer._a_star(maze, start, goal)
 
 
 def _reconstruct(came_from, current):

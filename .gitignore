@@ -17,3 +17,5 @@ dist/
 # Runtime game data (generated locally, not source)
 scores.json
 MemoryMaze/scores.json
+settings.json
+MemoryMaze/settings.json

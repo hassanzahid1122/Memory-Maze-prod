@@ -6,6 +6,18 @@ from . import config, effects
 
 _GLOW_OFFSETS = [(-3, 0), (3, 0), (0, -3), (0, 3), (-2, -2), (2, 2), (-2, 2), (2, -2)]
 
+# Edge-triggered mouse click, computed once per frame via begin_frame().
+_prev_pressed = False
+_just_pressed = False
+
+
+def begin_frame():
+    """Call once per frame before drawing so buttons fire on click, not hold."""
+    global _prev_pressed, _just_pressed
+    pressed = pygame.mouse.get_pressed()[0]
+    _just_pressed = pressed and not _prev_pressed
+    _prev_pressed = pressed
+
 
 def blit_centered(surface, font, text, color, y):
     """Render ``text`` horizontally centered at height ``y``."""
@@ -14,8 +26,10 @@ def blit_centered(surface, font, text, color, y):
     return label
 
 
-def title(surface, font, text, color, y, glow_color=config.Color.ACCENT):
+def title(surface, font, text, color, y, glow_color=None):
     """Render a centered title with a soft glowing halo."""
+    if glow_color is None:
+        glow_color = config.Color.ACCENT
     base = font.render(text, True, color)
     halo = font.render(text, True, glow_color)
     halo.set_alpha(55)
@@ -34,8 +48,10 @@ def draw_overlay(surface, alpha=180):
     surface.blit(overlay, (0, 0))
 
 
-def panel(surface, rect, radius=16, fill=config.Color.PANEL, border=config.Color.PANEL_BORDER):
+def panel(surface, rect, radius=16, fill=None, border=None):
     """A rounded, bordered panel with a soft drop shadow."""
+    fill = config.Color.PANEL if fill is None else fill
+    border = config.Color.PANEL_BORDER if border is None else border
     shadow = pygame.Surface((rect.width, rect.height), pygame.SRCALPHA)
     pygame.draw.rect(shadow, (0, 0, 0, 110), shadow.get_rect(), border_radius=radius)
     surface.blit(shadow, (rect.x, rect.y + 6))
@@ -44,9 +60,8 @@ def panel(surface, rect, radius=16, fill=config.Color.PANEL, border=config.Color
 
 
 def button(surface, font, x, y, w, h, text):
-    """Draw an animated button and return True while it is being clicked."""
+    """Draw an animated button and return True on the frame it is clicked."""
     mouse = pygame.mouse.get_pos()
-    clicked = pygame.mouse.get_pressed()[0]
 
     rect = pygame.Rect(x, y, w, h)
     hovered = rect.collidepoint(mouse)
@@ -69,4 +84,4 @@ def button(surface, font, x, y, w, h, text):
     surface.blit(label, (draw_rect.centerx - label.get_width() // 2,
                          draw_rect.centery - label.get_height() // 2))
 
-    return hovered and clicked
+    return hovered and _just_pressed

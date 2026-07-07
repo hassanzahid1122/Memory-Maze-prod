@@ -11,6 +11,17 @@ import pygame
 
 from . import config
 
+_enabled = True
+
+
+def set_enabled(value):
+    global _enabled
+    _enabled = value
+
+
+def enabled():
+    return _enabled
+
 
 # --------------------------------------------------------------------------- #
 # Geometry / easing
@@ -117,10 +128,16 @@ def _glow_surface(radius, color):
 
 
 def draw_glow(surface, color, center, radius):
-    """Blit a soft radial glow centered on ``center``."""
+    """Blit a soft radial glow centered on ``center`` (skipped if effects off)."""
+    if not _enabled:
+        return
     radius = max(1, int(radius))
     surf = _glow_surface(radius, tuple(color))
     surface.blit(surf, (int(center[0]) - radius, int(center[1]) - radius))
+
+
+def clear_caches():
+    _glow_cache.clear()
 
 
 def draw_alpha_circle(surface, color, center, radius, alpha):
@@ -128,3 +145,42 @@ def draw_alpha_circle(surface, color, center, radius, alpha):
     surf = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
     pygame.draw.circle(surf, (*color, alpha), (radius, radius), radius)
     surface.blit(surf, (int(center[0]) - radius, int(center[1]) - radius))
+
+
+# --------------------------------------------------------------------------- #
+# Confetti
+# --------------------------------------------------------------------------- #
+class Confetti:
+    """A short-lived burst of falling, tumbling paper squares."""
+
+    def __init__(self):
+        self.pieces = []
+
+    def burst(self, count=140):
+        if not _enabled:
+            return
+        for _ in range(count):
+            self.pieces.append({
+                "x": random.uniform(config.WIDTH * 0.2, config.WIDTH * 0.8),
+                "y": random.uniform(-40, config.HEIGHT * 0.3),
+                "vx": random.uniform(-2.4, 2.4),
+                "vy": random.uniform(1.5, 5.0),
+                "size": random.randint(4, 9),
+                "color": random.choice(config.Color.CONFETTI),
+                "spin": random.uniform(-0.3, 0.3),
+                "angle": random.uniform(0, math.tau),
+            })
+
+    def update_and_draw(self, surface):
+        alive = []
+        for p in self.pieces:
+            p["vy"] += 0.12
+            p["x"] += p["vx"]
+            p["y"] += p["vy"]
+            p["angle"] += p["spin"]
+            if p["y"] < config.HEIGHT + 20:
+                alive.append(p)
+                s = p["size"]
+                w = max(2, int(s * abs(math.cos(p["angle"]))))
+                pygame.draw.rect(surface, p["color"], (int(p["x"]), int(p["y"]), w, s))
+        self.pieces = alive

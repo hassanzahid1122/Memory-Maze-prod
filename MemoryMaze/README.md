@@ -7,10 +7,27 @@ speed yourself up or slow the AI down.
 
 ## Gameplay
 
-- **Move:** arrow keys
+- **Move:** arrow keys (or WASD — switch in Settings)
 - **Pause:** `Esc` &nbsp;·&nbsp; **Resume:** `Esc`, **Restart:** `R`, **Menu:** `M`
-- **Power-ups:** `SPEED` (you move faster), `SLOW_AI` (AI slows down), `FREEZE` (AI freezes)
+- Each round opens with a **3-2-1 countdown**, then you race the A\* AI to the exit.
+- **Power-ups:**
+  - `S` SPEED — you move faster
+  - `A` SLOW_AI — the AI slows down
+  - `F` FREEZE — the AI freezes for a moment
+  - `R` REVEAL — the whole maze stays visible for 3 seconds
+  - `T` TELEPORT — jump several cells ahead along your route
 - **Penalty:** walking into a dead-end adds time to your score.
+- **Score:** based on difficulty, finish time and penalties; your best per
+  difficulty is tracked and the leaderboard is ranked by points.
+
+## Settings
+
+Reachable from the main menu and saved to `settings.json`:
+
+- **Controls** — Arrows or WASD
+- **Theme** — Neon, Amber or Mono
+- **Effects** — glow / particle effects on or off
+- **Sound** — synthesized sound effects & music on or off
 
 ## Project layout
 
@@ -24,11 +41,16 @@ MemoryMaze/
     ├── config.py        # all tunables, colors and difficulty presets
     ├── game.py          # window + screen state machine
     ├── maze.py          # maze generation, memory cycle, rendering
-    ├── player.py        # human player
+    ├── player.py        # human player (Arrows / WASD)
     ├── ai.py            # A* AI opponent
     ├── powerups.py      # power-up spawning & effects
-    ├── scores.py        # leaderboard persistence
-    └── ui.py            # shared drawing helpers
+    ├── effects.py       # gradient, starfield, glow, confetti, viewport
+    ├── ui.py            # shared drawing helpers (buttons, titles, panels)
+    ├── audio.py         # synthesized sound effects & music (no assets)
+    ├── theme.py         # selectable color themes
+    ├── settings.py      # persisted user preferences
+    ├── scores.py        # scoring + leaderboard
+    └── storage.py       # JSON persistence helpers
 ```
 
 ## Run from source
