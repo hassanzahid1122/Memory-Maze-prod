@@ -136,5 +136,17 @@
         "winner": "PLAYER",
         "time": 22,
         "penalty": 2
+    },
+    {
+        "player": "hi",
+        "winner": "AI",
+        "time": 13,
+        "penalty": 0
+    },
+    {
+        "player": "adeel",
+        "winner": "PLAYER",
+        "time": 14,
+        "penalty": 2
     }
 ]

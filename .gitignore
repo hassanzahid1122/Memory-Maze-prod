@@ -1,3 +1,5 @@
 .vscode
 .env
 __pycache__
+MemoryMaze/__pycache__
+MemoryMaze/src/__pycache__

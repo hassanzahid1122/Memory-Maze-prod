@@ -70,5 +70,11 @@
         "winner": "PLAYER",
         "time": 35,
         "penalty": 0
+    },
+    {
+        "player": "adeel",
+        "winner": "PLAYER",
+        "time": 13,
+        "penalty": 2
     }
 ]
