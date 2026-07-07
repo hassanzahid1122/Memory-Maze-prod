@@ -1,10 +1,11 @@
 """The AI opponent: it solves the maze with A* and steps along the path."""
 
 import heapq
+from collections import deque
 
 import pygame
 
-from . import config
+from . import config, effects
 from .maze import DIRECTIONS
 
 
@@ -17,6 +18,10 @@ class AIPlayer:
 
         self.path = []
         self.index = 0
+
+        self.render_x = None       # pixel position (lazily set on first draw)
+        self.render_y = None
+        self.trail = deque(maxlen=9)
 
     def update(self, maze):
         if self.freeze_time > 0:
@@ -75,14 +80,28 @@ class AIPlayer:
 
         return []
 
-    def draw(self, screen):
-        size = config.CELL_SIZE
-        x = self.col * size + size // 4
-        y = self.row * size + size // 4
-        pygame.draw.rect(screen, config.Color.AI_BODY, (x, y, size // 2, size // 2))
+    def draw(self, screen, viewport, t=0.0):
+        size = viewport.cell_size
+        target_x, target_y = viewport.center(self.row, self.col)
+        if self.render_x is None:
+            self.render_x, self.render_y = target_x, target_y
+        self.render_x = effects.ease(self.render_x, target_x, 0.25)
+        self.render_y = effects.ease(self.render_y, target_y, 0.25)
+        center = (self.render_x, self.render_y)
 
-        center = (self.col * size + size // 2, self.row * size + size // 2)
-        pygame.draw.circle(screen, config.Color.AI_GLOW, center, size // 6)
+        frozen = self.freeze_time > 0
+        body = config.Color.FREEZE_TINT if frozen else config.Color.AI_BODY
+        glow = config.Color.FREEZE_TINT if frozen else config.Color.AI_GLOW
+
+        self.trail.append(center)
+        for i, (tx, ty) in enumerate(self.trail):
+            f = (i + 1) / len(self.trail)
+            effects.draw_alpha_circle(screen, body, (tx, ty), size * 0.16 * f, int(60 * f))
+
+        glow_r = size * (0.5 + 0.12 * effects.pulse(t, speed=5))
+        effects.draw_glow(screen, glow, center, glow_r)
+        pygame.draw.circle(screen, body, center, int(size * 0.28))
+        pygame.draw.circle(screen, config.Color.WHITE, center, int(size * 0.09))
 
 
 def _reconstruct(came_from, current):

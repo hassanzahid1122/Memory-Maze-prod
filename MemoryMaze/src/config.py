@@ -11,7 +11,8 @@ from dataclasses import dataclass
 # --------------------------------------------------------------------------- #
 WIDTH = 900
 HEIGHT = 700
-CELL_SIZE = 30
+CELL_SIZE = 30             # nominal cell size; the play viewport auto-scales per maze
+HUD_HEIGHT = 56            # reserved bar at the top of the play screen
 FPS = 60
 CAPTION = "Memory Maze"
 
@@ -52,26 +53,46 @@ DEFAULT_DIFFICULTY = "MEDIUM"
 # --------------------------------------------------------------------------- #
 class Color:
     BG = (10, 10, 25)
-    WHITE = (255, 255, 255)
-    WALL = (200, 200, 200)
-    HIDDEN_CELL = (12, 12, 20)
+    BG_TOP = (18, 20, 44)         # background gradient (top)
+    BG_BOTTOM = (6, 6, 16)        # background gradient (bottom)
+    WHITE = (245, 248, 255)
+    STAR = (190, 205, 255)
+
+    WALL = (150, 175, 230)
+    FLOOR = (17, 19, 36)
+    FLOOR_BORDER = (44, 60, 120)
+    HIDDEN_CELL = (11, 12, 26)
+    FOG = (26, 30, 62)
 
     ACCENT = (0, 220, 255)
+    ACCENT_SOFT = (120, 235, 255)
     TITLE_GOLD = (255, 215, 0)
-    HINT = (180, 180, 180)
+    HINT = (165, 178, 210)
 
-    START = (0, 255, 0)
-    EXIT = (255, 0, 0)
-    PLAYER = (0, 180, 255)
-    AI_BODY = (255, 80, 80)
-    AI_GLOW = (255, 160, 160)
+    START = (60, 230, 130)
+    EXIT = (255, 90, 90)
+    PLAYER = (70, 195, 255)
+    PLAYER_GLOW = (30, 140, 240)
+    AI_BODY = (255, 95, 95)
+    AI_GLOW = (255, 70, 70)
+    FREEZE_TINT = (120, 210, 255)
 
-    INPUT_BOX = (40, 40, 70)
-    BTN = (60, 60, 120)
-    BTN_HOVER = (0, 160, 255)
+    INPUT_BOX = (30, 32, 60)
+    INPUT_BORDER = (0, 185, 240)
+    BTN = (44, 48, 96)
+    BTN_HOVER = (0, 150, 240)
+    BTN_BORDER = (92, 130, 230)
+
+    PANEL = (18, 20, 42)
+    PANEL_BORDER = (62, 82, 165)
 
     POWERUP = {
-        "SPEED": (0, 255, 0),
-        "SLOW_AI": (255, 165, 0),
-        "FREEZE": (0, 200, 255),
+        "SPEED": (60, 235, 120),
+        "SLOW_AI": (255, 170, 40),
+        "FREEZE": (0, 205, 255),
+    }
+    POWERUP_ICON = {
+        "SPEED": "S",
+        "SLOW_AI": "A",
+        "FREEZE": "F",
     }

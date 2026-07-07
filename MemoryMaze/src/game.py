@@ -6,7 +6,7 @@ import time
 
 import pygame
 
-from . import config, ui
+from . import config, effects, ui
 from .ai import AIPlayer
 from .maze import Maze
 from .player import Player
@@ -42,6 +42,11 @@ class Game:
         self.font_med = pygame.font.SysFont("arial", 32)
         self.font_small = pygame.font.SysFont("arial", 22)
 
+        self.background = effects.make_gradient(
+            config.WIDTH, config.HEIGHT, config.Color.BG_TOP, config.Color.BG_BOTTOM)
+        self.starfield = effects.Starfield()
+        self.time = 0.0
+
         self.state = State.LOGIN
         self.player_name = ""
         self.user_text = ""
@@ -52,6 +57,7 @@ class Game:
         self.player = None
         self.ai = None
         self.powerups = None
+        self.viewport = None
         self.start_time = 0.0
 
     # ------------------------------------------------------------------ #
@@ -61,7 +67,10 @@ class Game:
         running = True
         while running:
             self.clock.tick(config.FPS)
-            self.screen.fill(config.Color.BG)
+            self.time = pygame.time.get_ticks() / 1000.0
+            self.screen.blit(self.background, (0, 0))
+            if self.state != State.PLAYING:
+                self.starfield.draw(self.screen, self.time)
             keys = pygame.key.get_pressed()
 
             for event in pygame.event.get():
@@ -89,6 +98,9 @@ class Game:
         self.player = Player(self.maze.start)
         self.ai = AIPlayer(self.maze.start, move_delay=preset.ai_move_delay)
         self.powerups = PowerUpManager(self.maze)
+
+        play_area = (0, config.HUD_HEIGHT, config.WIDTH, config.HEIGHT - config.HUD_HEIGHT)
+        self.viewport = effects.Viewport(self.maze.rows, self.maze.cols, play_area)
 
         self.start_time = time.time()
         self.state = State.PLAYING
@@ -143,20 +155,26 @@ class Game:
     # Screens
     # ------------------------------------------------------------------ #
     def _screen_login(self):
-        ui.blit_centered(self.screen, self.font_big, "MEMORY MAZE", config.Color.ACCENT, 120)
+        ui.title(self.screen, self.font_big, "MEMORY MAZE", config.Color.ACCENT, 130)
+        ui.blit_centered(self.screen, self.font_small,
+                         "Race the AI out of the maze — before it fades from memory",
+                         config.Color.HINT, 210)
 
         box = pygame.Rect(config.WIDTH // 2 - 220, 300, 440, 65)
         pygame.draw.rect(self.screen, config.Color.INPUT_BOX, box, border_radius=12)
-        self.screen.blit(self.font_med.render(self.user_text, True, config.Color.WHITE),
-                         (box.x + 20, box.y + 18))
+        pygame.draw.rect(self.screen, config.Color.INPUT_BORDER, box, width=2, border_radius=12)
+
+        caret = "|" if int(self.time * 2) % 2 == 0 else " "
+        shown = self.font_med.render(self.user_text + caret, True, config.Color.WHITE)
+        self.screen.blit(shown, (box.x + 20, box.y + 18))
 
         ui.blit_centered(self.screen, self.font_small,
                          "Enter Username & Press ENTER", config.Color.HINT, 400)
 
     def _screen_menu(self):
-        ui.blit_centered(self.screen, self.font_big, "MEMORY MAZE", config.Color.ACCENT, 100)
+        ui.title(self.screen, self.font_big, "MEMORY MAZE", config.Color.ACCENT, 100)
         ui.blit_centered(self.screen, self.font_small,
-                         f"Welcome {self.player_name}", (255, 255, 0), 180)
+                         f"Welcome, {self.player_name}", config.Color.TITLE_GOLD, 190)
 
         cx = config.WIDTH // 2 - 150
         if ui.button(self.screen, self.font_med, cx, 270, 300, 60, "START GAME"):
@@ -167,10 +185,10 @@ class Game:
             self._quit()
 
     def _screen_difficulty(self):
-        ui.draw_overlay(self.screen, 180)
-        ui.blit_centered(self.screen, self.font_big, "SELECT DIFFICULTY", config.Color.TITLE_GOLD, 70)
+        ui.title(self.screen, self.font_big, "SELECT DIFFICULTY", config.Color.TITLE_GOLD, 70,
+                 glow_color=config.Color.TITLE_GOLD)
         ui.blit_centered(self.screen, self.font_small,
-                         "Choose your challenge level", (220, 220, 220), 145)
+                         "Choose your challenge level", config.Color.HINT, 145)
 
         cx = config.WIDTH // 2 - 180
         rows = [("EASY", 220, 295), ("MEDIUM", 340, 415), ("HARD", 460, 535)]
@@ -190,18 +208,42 @@ class Game:
         self.ai.update(self.maze)
         self.powerups.update(self.player, self.ai)
 
-        self.maze.draw(self.screen)
-        self.player.draw(self.screen)
-        self.ai.draw(self.screen)
-        self.powerups.draw(self.screen)
+        self.maze.draw(self.screen, self.viewport, self.time)
+        self.powerups.draw(self.screen, self.viewport, self.time)
+        self.player.draw(self.screen, self.viewport, self.time)
+        self.ai.draw(self.screen, self.viewport, self.time)
 
         elapsed = int(time.time() - self.start_time)
-        self.screen.blit(self.font_small.render(f"Time: {elapsed}s", True, config.Color.WHITE), (20, 20))
+        self._draw_hud(elapsed)
 
         if (self.player.row, self.player.col) == self.maze.exit:
             self._finish("PLAYER", elapsed)
         elif (self.ai.row, self.ai.col) == self.maze.exit:
             self._finish("AI", elapsed)
+
+    def _draw_hud(self, elapsed):
+        bar = pygame.Rect(0, 0, config.WIDTH, config.HUD_HEIGHT)
+        strip = pygame.Surface(bar.size, pygame.SRCALPHA)
+        strip.fill((14, 16, 34, 220))
+        self.screen.blit(strip, (0, 0))
+        pygame.draw.line(self.screen, config.Color.PANEL_BORDER,
+                         (0, config.HUD_HEIGHT), (config.WIDTH, config.HUD_HEIGHT), 2)
+
+        y = 16
+        self.screen.blit(self.font_small.render(f"TIME  {elapsed}s", True, config.Color.WHITE),
+                         (24, y))
+        self.screen.blit(self.font_small.render(f"{self.difficulty_key}", True, config.Color.ACCENT_SOFT),
+                         (200, y))
+        self.screen.blit(self.font_small.render(f"PENALTY  +{self.player.penalty_time}s", True,
+                                                config.Color.TITLE_GOLD), (330, y))
+
+        phase = "REMEMBER!" if self.maze.memory_state == "HIDDEN" else "LOOK"
+        phase_color = config.Color.EXIT if self.maze.memory_state == "HIDDEN" else config.Color.START
+        self.screen.blit(self.font_small.render(phase, True, phase_color), (560, y))
+
+        if self.ai.freeze_time > 0:
+            self.screen.blit(self.font_small.render("AI FROZEN", True, config.Color.FREEZE_TINT),
+                             (config.WIDTH - 140, y))
 
     def _finish(self, winner, elapsed):
         self.winner = winner
@@ -209,8 +251,10 @@ class Game:
         self.state = State.GAME_OVER
 
     def _screen_pause(self):
-        ui.draw_overlay(self.screen, 180)
-        ui.blit_centered(self.screen, self.font_big, "PAUSED", (255, 255, 0), 120)
+        ui.draw_overlay(self.screen, 170)
+        ui.panel(self.screen, pygame.Rect(config.WIDTH // 2 - 200, 90, 400, 430))
+        ui.title(self.screen, self.font_big, "PAUSED", config.Color.TITLE_GOLD, 120,
+                 glow_color=config.Color.TITLE_GOLD)
 
         cx = config.WIDTH // 2 - 150
         if ui.button(self.screen, self.font_med, cx, 260, 300, 60, "RESUME"):
@@ -221,29 +265,43 @@ class Game:
             self.state = State.MENU
 
     def _screen_game_over(self):
-        result = "PLAYER WINS!" if self.winner == "PLAYER" else "AI WINS!"
-        self.screen.blit(self.font_big.render("GAME OVER", True, (0, 255, 120)),
-                         (config.WIDTH // 2 - 220, 120))
-        self.screen.blit(self.font_big.render(result, True, (255, 255, 0)),
-                         (config.WIDTH // 2 - 250, 220))
-        self.screen.blit(self.font_med.render("R - Restart | M - Menu", True, config.Color.WHITE),
-                         (config.WIDTH // 2 - 180, 340))
+        player_won = self.winner == "PLAYER"
+        result = "YOU WIN!" if player_won else "AI WINS!"
+        result_color = config.Color.START if player_won else config.Color.EXIT
+
+        ui.panel(self.screen, pygame.Rect(config.WIDTH // 2 - 260, 150, 520, 300))
+        ui.title(self.screen, self.font_med, "GAME OVER", config.Color.HINT, 190,
+                 glow_color=config.Color.HINT)
+        ui.title(self.screen, self.font_big, result, result_color, 250, glow_color=result_color)
+        ui.blit_centered(self.screen, self.font_small,
+                         "R  -  Restart      M  -  Menu", config.Color.WHITE, 380)
 
     def _screen_leaderboard(self):
-        ui.draw_overlay(self.screen, 200)
-        ui.blit_centered(self.screen, self.font_big, "LEADERBOARD", config.Color.ACCENT, 80)
+        ui.title(self.screen, self.font_big, "LEADERBOARD", config.Color.ACCENT, 60)
+
+        panel_rect = pygame.Rect(config.WIDTH // 2 - 280, 150, 560, config.HEIGHT - 260)
+        ui.panel(self.screen, panel_rect)
 
         scores = load_scores()
-        y = 160
+        y = panel_rect.y + 24
         if not scores:
-            ui.blit_centered(self.screen, self.font_med, "No scores yet", config.Color.WHITE, y)
+            ui.blit_centered(self.screen, self.font_med, "No scores yet", config.Color.HINT, y + 40)
         else:
+            header = self.font_small.render("PLAYER            RESULT        TIME",
+                                            True, config.Color.ACCENT_SOFT)
+            self.screen.blit(header, (panel_rect.x + 30, y))
+            y += 40
             for s in scores[-config.LEADERBOARD_LIMIT:][::-1]:
-                row = f"{s['player']} | {s['winner']} | {s['time']}s"
-                self.screen.blit(self.font_small.render(row, True, config.Color.WHITE),
-                                 (config.WIDTH // 2 - 160, y))
-                y += 40
+                win = s["winner"] == "PLAYER"
+                row_color = config.Color.START if win else config.Color.EXIT
+                name = self.font_small.render(f"{s['player']:<14}", True, config.Color.WHITE)
+                res = self.font_small.render(f"{'WIN' if win else 'LOSS':<10}", True, row_color)
+                tm = self.font_small.render(f"{s['time']}s", True, config.Color.WHITE)
+                self.screen.blit(name, (panel_rect.x + 30, y))
+                self.screen.blit(res, (panel_rect.x + 250, y))
+                self.screen.blit(tm, (panel_rect.x + 430, y))
+                y += 34
 
         if ui.button(self.screen, self.font_med,
-                     config.WIDTH // 2 - 150, config.HEIGHT - 90, 300, 60, "BACK TO MENU"):
+                     config.WIDTH // 2 - 150, config.HEIGHT - 80, 300, 55, "BACK TO MENU"):
             self.state = State.MENU

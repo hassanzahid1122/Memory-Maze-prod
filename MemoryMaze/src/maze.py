@@ -5,7 +5,7 @@ import time
 
 import pygame
 
-from . import config
+from . import config, effects
 
 # Wall indices, shared by every module that inspects a cell's walls.
 TOP, RIGHT, BOTTOM, LEFT = 0, 1, 2, 3
@@ -138,34 +138,53 @@ class Maze:
     # ------------------------------------------------------------------ #
     # Rendering
     # ------------------------------------------------------------------ #
-    def draw(self, screen):
-        size = config.CELL_SIZE
+    def draw(self, screen, viewport, t=0.0):
+        size = viewport.cell_size
+
+        # Floor beneath the whole maze so the walls read clearly.
+        field = pygame.Rect(viewport.ox, viewport.oy, viewport.width, viewport.height)
+        pygame.draw.rect(screen, config.Color.FLOOR, field.inflate(10, 10), border_radius=10)
+        pygame.draw.rect(screen, config.Color.FLOOR_BORDER, field.inflate(10, 10),
+                         width=2, border_radius=10)
+
         for row in self.grid:
             for cell in row:
-                x, y = cell.col * size, cell.row * size
+                x, y = viewport.origin(cell.row, cell.col)
                 pos = (cell.row, cell.col)
 
                 if pos == self.start:
-                    pygame.draw.rect(screen, config.Color.START, (x, y, size, size))
+                    self._draw_marker(screen, x, y, size, config.Color.START, t)
                     continue
                 if pos == self.exit:
-                    pygame.draw.rect(screen, config.Color.EXIT, (x, y, size, size))
+                    self._draw_marker(screen, x, y, size, config.Color.EXIT, t, offset=0.9)
                     continue
 
                 if self.memory_state == HIDDEN and pos not in self.visible_cells:
-                    pygame.draw.rect(screen, config.Color.HIDDEN_CELL, (x, y, size, size))
+                    pygame.draw.rect(screen, config.Color.FOG, (x + 1, y + 1, size - 2, size - 2),
+                                     border_radius=4)
                     continue
 
                 self._draw_walls(screen, cell, x, y, size)
 
     @staticmethod
+    def _draw_marker(screen, x, y, size, color, t, offset=0.0):
+        """A glowing, gently pulsing start/exit tile."""
+        cx, cy = x + size / 2, y + size / 2
+        glow_r = size * (0.7 + 0.18 * effects.pulse(t + offset, speed=3))
+        effects.draw_glow(screen, color, (cx, cy), glow_r)
+        inset = max(2, size // 8)
+        pygame.draw.rect(screen, color, (x + inset, y + inset, size - 2 * inset, size - 2 * inset),
+                         border_radius=6)
+
+    @staticmethod
     def _draw_walls(screen, cell, x, y, size):
         color = config.Color.WALL
+        w = 2
         if cell.walls[TOP]:
-            pygame.draw.line(screen, color, (x, y), (x + size, y))
+            pygame.draw.line(screen, color, (x, y), (x + size, y), w)
         if cell.walls[RIGHT]:
-            pygame.draw.line(screen, color, (x + size, y), (x + size, y + size))
+            pygame.draw.line(screen, color, (x + size, y), (x + size, y + size), w)
         if cell.walls[BOTTOM]:
-            pygame.draw.line(screen, color, (x, y + size), (x + size, y + size))
+            pygame.draw.line(screen, color, (x, y + size), (x + size, y + size), w)
         if cell.walls[LEFT]:
-            pygame.draw.line(screen, color, (x, y), (x, y + size))
+            pygame.draw.line(screen, color, (x, y), (x, y + size), w)

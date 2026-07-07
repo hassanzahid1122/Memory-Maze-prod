@@ -1,10 +1,11 @@
 """Collectable power-ups that alter the player's or the AI's speed."""
 
+import math
 import random
 
 import pygame
 
-from . import config
+from . import config, effects
 
 SPEED = "SPEED"
 SLOW_AI = "SLOW_AI"
@@ -20,6 +21,18 @@ class PowerUp:
         self.col = col
         self.type = type_
         self.active = True
+
+
+_icon_fonts = {}
+
+
+def _get_icon_font(cell_size):
+    size = max(10, cell_size // 2)
+    font = _icon_fonts.get(size)
+    if font is None:
+        font = pygame.font.SysFont("arial", size, bold=True)
+        _icon_fonts[size] = font
+    return font
 
 
 class PowerUpManager:
@@ -51,11 +64,22 @@ class PowerUpManager:
 
             p.active = False
 
-    def draw(self, screen):
-        size = config.CELL_SIZE
+    def draw(self, screen, viewport, t=0.0):
+        size = viewport.cell_size
+        font = _get_icon_font(size)
         for p in self.powerups:
             if not p.active:
                 continue
-            x = p.col * size + size // 2
-            y = p.row * size + size // 2
-            pygame.draw.circle(screen, config.Color.POWERUP[p.type], (x, y), size // 4)
+
+            color = config.Color.POWERUP[p.type]
+            bob = math.sin(t * 3 + p.row + p.col) * size * 0.08
+            base_x, base_y = viewport.center(p.row, p.col)
+            cx = base_x
+            cy = base_y + bob
+
+            radius = size * 0.24 * (0.85 + 0.15 * effects.pulse(t, speed=4))
+            effects.draw_glow(screen, color, (cx, cy), radius * 2.1)
+            pygame.draw.circle(screen, color, (cx, cy), int(radius))
+
+            icon = font.render(config.Color.POWERUP_ICON[p.type], True, (10, 12, 24))
+            screen.blit(icon, (cx - icon.get_width() / 2, cy - icon.get_height() / 2))
