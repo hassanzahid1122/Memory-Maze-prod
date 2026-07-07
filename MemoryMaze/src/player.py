@@ -1,57 +1,50 @@
+"""The human-controlled player."""
+
 import pygame
-from src.settings import *
+
+from . import config
+from .maze import TOP, RIGHT, BOTTOM, LEFT
+
+# Arrow key -> (wall that must be open, row delta, col delta)
+_MOVES = {
+    pygame.K_LEFT: (LEFT, 0, -1),
+    pygame.K_RIGHT: (RIGHT, 0, 1),
+    pygame.K_UP: (TOP, -1, 0),
+    pygame.K_DOWN: (BOTTOM, 1, 0),
+}
+
 
 class Player:
     def __init__(self, start):
         self.row, self.col = start
-        self.move_delay = 0
-        self.penalty_time = 0
+        self.move_delay = 0        # frames remaining before the next move is allowed
+        self.penalty_time = 0      # seconds added for entering dead-ends
 
     def handle_input(self, keys, maze):
-
         if self.move_delay > 0:
             self.move_delay -= 1
             return
 
         cell = maze.cell(self.row, self.col)
-        r, c = self.row, self.col
+        if cell is None:
+            return
 
-        moved = False
+        for key, (wall, dr, dc) in _MOVES.items():
+            if keys[key] and not cell.walls[wall]:
+                self.row += dr
+                self.col += dc
+                self.move_delay = config.PLAYER_MOVE_DELAY
+                self._apply_dead_end_penalty(maze)
+                return
 
-        # LEFT
-        if keys[pygame.K_LEFT] and not cell.walls[3]:
-            self.col -= 1
-            moved = True
-
-        # RIGHT
-        elif keys[pygame.K_RIGHT] and not cell.walls[1]:
-            self.col += 1
-            moved = True
-
-        # UP
-        elif keys[pygame.K_UP] and not cell.walls[0]:
-            self.row -= 1
-            moved = True
-
-        # DOWN
-        elif keys[pygame.K_DOWN] and not cell.walls[2]:
-            self.row += 1
-            moved = True
-
-        if moved:
-            self.move_delay = 6
-            self.check_dead_end(maze)
-
-    def check_dead_end(self, maze):
+    def _apply_dead_end_penalty(self, maze):
         cell = maze.cell(self.row, self.col)
-        open_paths = sum([not w for w in cell.walls])
-
+        open_paths = sum(not wall for wall in cell.walls)
         if open_paths <= 1:
-            self.penalty_time += 2
+            self.penalty_time += config.DEAD_END_PENALTY
 
     def draw(self, screen):
-        x = self.col * CELL_SIZE + CELL_SIZE//4
-        y = self.row * CELL_SIZE + CELL_SIZE//4
-
-        pygame.draw.rect(screen, (0, 180, 255),
-                         (x, y, CELL_SIZE//2, CELL_SIZE//2))
+        size = config.CELL_SIZE
+        x = self.col * size + size // 4
+        y = self.row * size + size // 4
+        pygame.draw.rect(screen, config.Color.PLAYER, (x, y, size // 2, size // 2))

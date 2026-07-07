@@ -1,3 +1,19 @@
+# Editor / env
 .vscode
 .env
-__pycache__
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# PyInstaller build artifacts
+build/
+dist/
+*.spec.bak
+
+# Runtime game data (generated locally, not source)
+scores.json
+MemoryMaze/scores.json
